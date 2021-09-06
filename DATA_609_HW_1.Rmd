@@ -1,0 +1,161 @@
+---
+title: "DATA 609 - HW 1"
+author: "Betsy Rosalen"
+date: "September 9, 2021"
+output:
+    html_document:
+        theme: cerulean
+        code_folding: show
+        df_print: paged
+        toc: true
+        toc_depth: 2
+        toc_float:
+            collapsed: false
+            smooth_scroll: false
+        css: ./style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+options(scipen=999, digits = 2)
+library(Rsolnp)
+```
+
+## Ex. 1
+
+### Find the minimum of $f(x,y) = x^2 + xy + y^2$ in $(x, y) \in\mathbb{R}^2$.
+
+There are two first partial derivatives $\frac{\partial f}{\partial x}$ and $\frac{\partial f}{\partial y}$, thus the stationary conditions are: $\frac{\partial f}{\partial x} = 2x + y = 0$ and $\frac{\partial f}{\partial y} = x + 2y = 0$.
+
+From $2x + y = 0$, we have $y = -2x$, and from $x + 2y = 0$, we have $x = -2y$.  
+
+Substituting $-2x$ for $y$ in the second condition we get $x = -2(-2x)$ or $x = 4x$.  The only value that satisfies this condition is $0$.  
+
+Conversely, substituting $-2y$ for $x$ in the first condition we get $y = -2(-2y)$ or $y = 4y$.  Again, the only value that satisfies this condition is $0$.  
+
+Solving for the opposite variable in each equation gives us $x = \frac{-y}{2}$ and $y = \frac{-x}{2}$.  In both cases, again, the only value that satisfies the condition is $0$.
+
+So, for $f(x,y) = x^2 + xy + y^2$, its gradient $\nabla f = (2x + y; x + 2y) = 0$ gives us $(x_*, y_*) = (0, 0)$.
+
+There are four second order derivatives $f_{xx} = \frac{\partial^2 f}{\partial x^2} = 2$, $f_{yy} = \frac{\partial^2 f}{\partial y^2} = 2$, $f_{xy} = \frac{\partial^2 f}{\partial x \partial y} = 1$ and $f_{yx} = \frac{\partial^2 f}{\partial y \partial x} = 1$ which we use to form the Hessian matrix:
+
+$$ H = \begin{pmatrix}
+2 & 1 \\
+1 & 2
+\end{pmatrix}$$
+
+The Determinant of $H$ is $2 \times 2 - 1 \times 1 = 3$ and so is positive definite.  Therefore, $(x_*, y_*)$ corresponds to a minimum at $(0,0)$ with $f_{min} = 0$.
+
+```{r ex1}
+f <- function(x){x[1]^2 + x[1]*x[2] + x[2]^2}
+optim(c(0,0), f, hessian = TRUE)
+```
+
+
+## Ex. 2
+
+### For $f(x) = x^4$ in $\mathbb{R}$, it has the global minimum at $x=0$.  Find its new minimum if a constraint $x^2 \ge 1$ is added.
+
+##### I did a whole bunch of really complicated math (below) only to realize afterward that in this case since we know that the domain of $f(x) = x^4$ is the set of all real numbers and has its global minimum at $x=0$ since $f(0) = 0$ and both positive and negative values of x would result in positive outcomes, if we put a constraint that $x^2 \ge 1$ then the set of feasible solutions are all the points that satisfy $x^2 \ge 1$ and our new minimum will be at $\pm \sqrt{1}$.  
+
+#### So, **the optimal solution in this case occurs at the boundary points $x=\pm 1$.**
+
+<br>
+
+###### For posterity, here's what I had done before realizing how much simpler the solution was than what I had originally tried to do...
+
+To minimize $f(x) = x^4$ subject to $g(x) = x^2 \ge 1$ first we need to change $g(x)$ to $x^2 - 1 \ge 0$.
+
+Then, using the penalty method we can transform the constrained problem to an unconstrained one:
+
+$$\begin{align} 
+\Pi &= f(x) + \mu[g(x)]2 \\
+&= x^4 + \mu[x^2 - 1]^2
+\end{align}$$
+
+Setting $\Pi'(x) = 0$ we get:
+
+$$\begin{align} 
+\Pi'(x) &= 4x^3 + 4\mu x(x^2 - 1) = 0\\
+&= 4x (x^2 +\mu (x^2 - 1)) = 0\\
+&= 4x (x^2 +\mu x^2 -\mu) = 0\\
+&= 4x (x^2 (\mu +1) -\mu) = 0
+\end{align}$$
+
+Therefore either $\quad x=0 \quad \text{or} \quad x^2(\mu+1)-\mu =0$.
+
+Solving for $x^2(\mu+1)-\mu =0$ we get:
+
+$$\begin{align} 
+x^2 (\mu +1) -\mu &= 0\\
+x^2(\mu+1) &= \mu\\
+\frac{x^2\left(\mu+1\right)}{\mu+1} &= \frac{\mu}{\mu+1};\quad \:\mu\ne \:-1\\
+x &= \pm\sqrt{\frac{\mu}{\mu+1}};\quad \:\mu\ne \:-1
+\end{align}$$
+
+So:
+
+$$
+x_* = 0,\quad x_* = \sqrt{\frac{\mu}{\mu+1}},\quad x_* = -\sqrt{\frac{\mu}{\mu+1}}; \quad \quad \mu\ne -1
+$$
+
+However, $x_* = 0$ is not a feasible solution since it does not meet our inequality constraint that $x^2 \ge 1$.  So, it seems the optimal solution $x_*$ depends on the penalty parameter $\mu$, which highlights a problem with the penalty method (the choice of $\mu$).  In this case however, the closer $\mu$ gets to $0$, the closer $x_*$ gets to $0$ as well.  The larger $\mu$ gets, the closer $x_*$ gets to $1$.  In both cases $x_*$ still would not meet our inequality constraint.  
+
+###### The above paragraph is what lead me to rethink the problem and then realize after going back to the textbook that it was much simpler than I was making it.  
+
+
+## Ex. 3
+
+### Use a Lagrange multiplier to solve the optimization problem: $$\text{min } f(x,y) = x^2 + 2xy + y^2 \text{, subject to } y = x^2 - 2\text{.}$$
+
+First we need to transform our problem from a constrained problem into an unconstrained problem via the Lagrange multiplier:
+
+$$\Phi =  x^2 + 2xy + y^2 + \lambda(x^2 - y - 2)$$
+
+The stationary conditions become:
+
+$$
+\frac{\partial \Phi}{\partial x} = 2x+2y+2\lambda x = 0,\quad 
+\frac{\partial \Phi}{\partial y} = 2x+2y-\lambda = 0,\quad 
+\frac{\partial \Phi}{\partial \lambda} = x^2-y-2 = 0\quad
+$$
+
+The second condition, $2x+2y−\lambda = 0$, gives us $\lambda = 2(x+y)$.
+
+The third condition, $x^2-y-2 = 0$, gives us $y = x^2-2$.
+
+Substituting these into the first condition gives us:
+
+$$
+\begin{align}
+2x + 2y + 2[2(x+y)]x &= 0 \\
+2x + 2y + 4x^2 + 4xy &= 0 \\
+2x^2 + x + 2xy + y &=0 \\
+2x^2 + x + 2x[x^2-2] + [x^2-2] &=0 \\
+2x^2 + x + 2x^3-4x + x^2 - 2 &=0 \\
+2x^3  + 3x^2 -3x - 2 &=0 \\
+(x−1)(x+2)(2x+1) &= 0
+\end{align}
+$$
+
+Therefore: 
+
+$$x_* = 1,\quad x_* = -2,\quad x_* = -\frac{1}{2}$$
+
+Because $f(x) = x^2 + 2xy + y^2 = (x+y)(x+y)$, at $x_* = 1$, $y = -1$, at $x_* = -2$, $y = 2$, and at $x_* = -0.5$, $y = 0.5$.  So we get the following three points:
+
+$$(1,-1),\quad (-2,2),\quad (-\frac{1}{2}, \frac{1}{2})$$
+
+$(-\frac{1}{2}, \frac{1}{2})$ is not a feasible solution because it does not satisfy the equality constraint, $y = x^2 - 2$, but both of the other two points are feasible and $f(x,y)$ evaluates to $0$ for both points.  So there are two optimal points at $(1, -1)$ with $f_{min}=0$ and $(-2, 2)$ with $f_{min}=0$.
+
+```{r ex3}
+fn1=function(x){x[1]^2+2*x[1]*x[2]+x[2]^2}
+eqn1=function(x){x[2]-x[1]^2}
+x0 = c(0,0)
+solnp(x0, fun = fn1, eqfun = eqn1, eqB = c(-2))
+```
+
+```{r ex3.2}
+x1 = c(-10,-10)
+solnp(x1, fun = fn1, eqfun = eqn1, eqB = c(-2))
+```
