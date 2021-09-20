@@ -1,0 +1,129 @@
+---
+title: "DATA 609 - HW 2"
+author: "Betsy Rosalen"
+date: "September 19, 2021"
+output:
+    html_document:
+        theme: cerulean
+        code_folding: show
+        df_print: paged
+        toc: true
+        toc_depth: 2
+        toc_float:
+            collapsed: false
+            smooth_scroll: false
+        css: ./style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+options(scipen=999, digits = 4)
+library(Rsolnp)
+```
+
+## Ex. 1
+
+### Show $x^2 + exp(x) + 2x^4 + 1$ is convex.
+
+A function is defined as convex if:
+
+$$
+f(\alpha x+\beta y) \le \alpha f(x) + \beta f(y), \quad \forall \:x,\: y \in \Omega, \quad \text{where } \alpha \ge 0,\ \beta \ge 0,\ \alpha + \beta = 1.
+$$
+
+Substituting in our expression we get:
+
+$$
+\begin{align}
+(\alpha x+\beta y)^2 + exp(\alpha x + \beta y) + 2(\alpha x + \beta y)^4 + 1 &\le \alpha (x^2 + exp(x) + 2x^4 + 1) + \beta (y^2 + exp(y) +2y^4 + 1)\\
+\alpha x^2 +\beta y^2 + e^{(\alpha x + \beta y)} + 2\alpha x^4 + 2\beta y^4 + 1 &\le \alpha x^2 + \alpha e^x + 2\alpha x^4 + \alpha + \beta y^2 + \beta e^y + 2\beta y^4 + \beta\\
+e^{(\alpha x + \beta y)} + 1 &\le \alpha e^x + \alpha + \beta e^y + \beta\\
+e^{(\alpha x + \beta y)} &\le \alpha e^x + \beta e^y\\
+\alpha e^x + \beta e^y - e^{(\alpha x + \beta y)} &\ge 0\\
+\alpha e^x + \beta e^y - e^{\alpha x} - e^{\beta y} &\ge 0
+\end{align}
+$$
+
+This inequality is always true, therefore, $x^2 + exp(x) + 2x^4 + 1$ is convex.
+
+```{r ex1}
+
+```
+
+
+## Ex. 2
+
+### Show that the mean of the exponential distribution $$p(x) = \left\{ \begin{align} \lambda e^{-\lambda x}, &\quad x \ge 0 (\lambda > 0), \\ 0, &\quad x < 0, \end{align} \right. $$ is $\mu = \frac{1}{\lambda}$ and its variance is $\sigma^2 = \frac{1}{\lambda^2}$
+
+We can solve for the expected value or mean of the exponential distribution by plugging the exponential probability density function into the definition of the mean: 
+
+$\mu \equiv E[X] \equiv <X> = \int xp(x)dx$ 
+
+and then integrating by parts using the formula:
+
+$\int uvdx = u \int vdx - \int u' (\int vdx) dx$ 
+
+and setting $u = x$ and $v = e^{−\lambda x}$.
+
+$$
+\begin{align}
+E[X] &= \int_0^{\infty} x p(x) dx \\
+&= \int_0^{\infty} x \lambda e^{−x \lambda} dx \\
+&= \lambda \int_0^{\infty} x e^{−x \lambda} dx\\
+&= \lambda \left[ x \frac{e^{-\lambda x}}{-\lambda} - \int 1 \bigg(\frac{e^{-\lambda x}}{-\lambda}\bigg) dx \right]_0^\infty \\
+&= \lambda \left[ \frac{-xe^{-\lambda x}}{\lambda} + \frac{1}{\lambda} \int e^{-\lambda x}dx\right]_0^\infty \\
+&= \bigg[-xe^{-\lambda x} + \int e^{-\lambda x}dx  \bigg] _0^\infty\\
+&= \bigg[-xe^{-\lambda x} - \frac{e^{-\lambda x}}{\lambda}  \bigg] _0^\infty\\
+&= \bigg[-xe^{-\lambda x} \bigg] _0^\infty - \bigg[\frac{e^{-\lambda x}}{\lambda}  \bigg] _0^\infty\\
+&= 0 - \bigg[ \frac{0}{\lambda} - \frac{1}{\lambda} \bigg] _0^\infty\\
+& = \frac{1}{\lambda}
+\end{align}
+$$
+
+We can find the variance by first finding the second moment $E[X^2]$ and then subtracting the mean squared from the second moment gives us the variance.
+
+$$
+\begin{align}
+E[X^2] &= \int_0^{\infty} x^2 p(x) dx \\
+&= \int_0^{\infty} x^2 \lambda e^{−x \lambda} dx, \quad u = x^2, v = e^{−x \lambda} \\
+&= \lambda \left[ x^2 \frac{e^{-\lambda x}}{-\lambda} - \int 2x \bigg(\frac{e^{-\lambda x}}{-\lambda}\bigg) dx \right]_0^\infty \\
+&= \lambda \left[ \frac{-x^2e^{-\lambda x}}{\lambda} + \frac{2}{\lambda} \int xe^{-\lambda x}dx\right]_0^\infty\\
+&= \bigg[-x^2e^{-\lambda x} + 2 \int xe^{-\lambda x}dx  \bigg] _0^\infty, \quad u = x, v = e^{−x \lambda}\\
+&= \bigg[-x^2e^{-\lambda x} \bigg] _0^\infty - 2 \bigg[\frac{xe^{-\lambda x}}{\lambda} - \int \frac{e^{-\lambda x}}{\lambda} \bigg] _0^\infty\\
+&= \bigg[-x^2e^{-\lambda x} \bigg] _0^\infty - \bigg[\frac{2xe^{-\lambda x}}{\lambda}\bigg] _0^\infty - \bigg[\frac{2e^{-\lambda x}}{\lambda^2} \bigg] _0^\infty\\
+&= 0 - 0 - \frac{2}{\lambda^2}\\
+&= \frac{2}{\lambda^2}\\
+\text{Var}[X] &= E[X^2] - E[X]^2 \\
+&= \frac{2}{\lambda^2} - \frac{1}{\lambda^2} \\
+&= \frac{1}{\lambda^2}
+\end{align}
+$$
+
+## Ex. 3
+
+### It is estimated that there is a typo in every 250 data entries in a database, assuming the number of typos can obey the Poisson distribution. For a given 1000 data entries, what is the probability of exactly 4 typos? 
+
+We would expect 4 typos (successes) in 1000 data entries so our lambda (expected value) is 4.  We can use the `dpois` function in R to calculate the probability of getting exactly 4 successes.
+
+```{r ex3.1}
+typos_4 <- dpois(4, lambda = 4)
+typos_4
+```
+
+### What is the probability of no typo at all? 
+
+By just changing our x value we can use the same `dpois` function to calculate the probability of no typos at all.
+
+```{r ex3.2}
+typos_0 <- dpois(0, lambda = 4)
+typos_0
+```
+
+### Use R to draw 1000 samples with $\lambda=4$ and show their histogram.
+
+The `rpois` function can be used to draw random samples from a Poisson distribution and then we can plot them with the `hist` function.
+
+```{r ex3.3}
+samples <- rpois(1000, 4)
+hist(samples)
+```
