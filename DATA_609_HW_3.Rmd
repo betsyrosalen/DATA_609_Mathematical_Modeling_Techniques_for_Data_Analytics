@@ -1,0 +1,168 @@
+---
+title: "DATA 609 - HW 3"
+author: "Betsy Rosalen"
+date: "October 3, 2021"
+output:
+    html_document:
+        theme: cerulean
+        code_folding: show
+        df_print: paged
+        toc: true
+        toc_depth: 2
+        toc_float:
+            collapsed: false
+            smooth_scroll: false
+        css: ./style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+options(scipen=999, digits = 2)
+library(optimr)
+```
+
+## Ex. 1
+
+### Write down Newton's formula for finding the minimum of $$f(x) = (3x^4 - 4x^3)/12$$ in the range of $[-10, 10]$. Then implement it in R.
+
+#### Newton's Formula:
+
+$$
+\begin{align}
+x_{k+1} = x_k - \frac{f'(x_k)}{f''(x_k)}
+\end{align}
+$$
+
+#### Inserting the first two derivatives of $f(x) = \frac{3x^4 - 4x^3}{12}$ we get:
+
+$$
+\begin{align}
+x_{k+1} &= x_k - \frac{\frac{12x_k^3-12x_k^2}{12}}{x_k^2+2(x_k-1)x_k}\\
+&= x_k - \frac{(x_k^2-x_k)x_k}{(3x_k-2)x_k}\\
+&= x_k - \frac{x_k^2-x_k}{3x_k-2}\\
+\end{align}
+$$
+
+```{r ex1}
+newton <- function(x) {
+ x - (x^2 - x) / (3 * x - 2)
+}
+
+recursivenewton <- function(x){
+    results <- data.frame('start'=numeric(),'x_1'=numeric(),'x_2'=numeric(),'x_3'=numeric(),
+                    'x_4'=numeric(),'x_5'=numeric(),'x_6'=numeric())
+    for (x in seq(-10, 10)){
+        x1 = newton(x)
+        x2 = newton(x1)
+        x3 = newton(x2)
+        x4 = newton(x3)
+        x5 = newton(x4)
+        x6 = newton(x5)
+        results <- rbind(results, data.frame('start'=x,'x_1'=x1,'x_2'=x2,'x_3'=x3,
+                    'x_4'=x4,'x_5'=x5,'x_6'=x6))
+    }
+    return(results)
+}
+
+recursivenewton()
+```
+
+This seems to work only for positive x starting values.
+
+
+## Ex. 2
+
+### Explore `optimize()` in R and try to solve the previous problem.
+
+```{r ex2}
+f <- function(x) {
+  (3*x^4 - 4*x^3) / 12
+}
+minimum <- optimize(f, interval = c(-10,10))
+minimum
+```
+
+
+## Ex. 3
+
+### Use any optimization algorithm to find the minimum of $$f(x,y) = (x - 1)^2 + 100(y - x^2)^2$$ in the domain $-10 \le x, y \le 10$.  Discuss any issues concerning the optimization process. 
+
+#### Newton's method for multivariate functions:
+
+$$
+\begin{align}
+x^{(k+1)} = x^{(k)} - H^{-1}(x^{(k)}) \nabla f(x^{(k)})
+\end{align}
+$$
+
+Our gradient is:
+
+$$
+\nabla f = \begin{bmatrix} 400x^3-400xy+2x-2\\200(y-x^2) \end{bmatrix}
+$$
+
+And the Hessian is:
+
+$$
+H = \begin{bmatrix} 1200x^2-400y+2 & -400x \\ -400x & 200 \end{bmatrix}
+$$
+
+```{r ex3}
+gradient <- function(x,y){
+  grad <- matrix(c((400*x^3-400*x*y+2*x-2), (200*(y-x^2))))
+  return(grad)
+}
+
+hessian <- function(x,y){
+  hess <- matrix(c(1200*x^2-400*y+2 , -400*x , -400*x , 200), nrow = 2)
+  return(hess)
+}
+
+newt2 <- function(x,y){
+  matrix(c(x,y)) - solve(hessian(x,y)) %*% gradient(x,y)
+}
+
+recursivenewt2 <- function(x,y){
+    results <- data.frame('x_start'=numeric(),'y_start'=numeric(),
+                          'x_1'=character(),'x_2'=numeric(),
+                          'x_3'=numeric(),'x_4'=numeric(),
+                          'x_5'=numeric(),'x_6'=numeric())
+    for (x in seq(-10, 10, by = 2)){
+      for (y in seq(-10, 10, by = 2)){
+        x1 = newt2(x,y)
+        x2 = newt2(x1[1],x1[2])
+        x3 = newt2(x2[1],x2[2])
+        x4 = newt2(x3[1],x3[2])
+        x5 = newt2(x4[1],x4[2])
+        x6 = newt2(x5[1],x5[2])
+        results <- rbind(results, data.frame('x_start'=x,'y_start'=y,
+                                             'x_1'=paste0('x=',round(x1[1],2),', y=',round(x1[2],2)),
+                                             'x_2'=paste0('x=',round(x2[1],2),', y=',round(x2[2],2)),
+                                             'x_3'=paste0('x=',round(x3[1],2),', y=',round(x3[2],2)),
+                                             'x_4'=paste0('x=',round(x4[1],2),', y=',round(x4[2],2)),
+                                             'x_5'=paste0('x=',round(x5[1],2),', y=',round(x5[2],2)),
+                                             'x_6'=paste0('x=',round(x6[1],2),', y=',round(x6[2],2))
+                                             ))
+      } 
+    }
+    return(results)
+}
+
+recursivenewt2()
+```
+
+I am honestly shocked that this worked as well as it seems to have worked.  It converges on the correct answer of [1,1] in about 3 to 4 iterations in all cases no matter what values I use to start for x and y.
+
+
+## Ex. 4
+
+### Explore the `optimr` package for R and try to solve the previous problem.
+
+```{r ex4}
+f <- function(x) {
+  (x[1]-1)^2 + 100*(x[2]-x[1]^2)^2
+}
+
+options(scipen = 999)
+optimr(c(-10,10), f, method = "L-BFGS-B")
+```
