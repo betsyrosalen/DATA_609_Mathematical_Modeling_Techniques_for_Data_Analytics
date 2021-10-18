@@ -1,0 +1,203 @@
+---
+title: "DATA 609 - HW 4"
+author: "Betsy Rosalen"
+date: "October 17, 2021"
+output:
+    html_document:
+        theme: cerulean
+        code_folding: show
+        df_print: paged
+        toc: true
+        toc_depth: 2
+        toc_float:
+            collapsed: false
+            smooth_scroll: false
+        css: ./style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+options(scipen=999, digits = 4)
+library(kableExtra)
+```
+
+## Ex. 1
+
+### For Example 19 on Page 79 in the book (Introduction to Algorithms for Data Mining and Machine Learning, by Xin-She Yang), carry out the regression using R. 
+
+```{r table1, echo=FALSE}
+x <- c(-0.98, 1.00, 2.02, 3.03, 4.00)
+y <- c(2.44, -1.51, -0.47, 2.54, 7.52) 
+table1 <- t(data.frame(x,y))
+kable(format(table1, digits = 2, drop0trailing = FALSE))  %>%
+  kable_styling("hover", full_width = F) %>%
+  column_spec(1, border_right = T) %>%
+  row_spec(1:2, bold = T, color = "white", background = "#2E5E80")
+```
+
+##### I always plot the data first to see if it gives me any insight into what type of model I might need.  In this case it's clearly not linear but quadratic, and I know this from the textbook as well anyway.
+
+```{r ex1, echo=FALSE}
+plot(x, y, pch=16)
+```
+
+##### Then I created an x-squared variable and fit the model with the base R `lm()` function, which gives the following output:
+
+```{r ex1.2}
+x2 <- x^2
+mod1 <- lm(y~(x + x2))
+mod1
+summary(mod1)
+```
+
+##### So the R code gives us the equation: 
+
+$$
+y = `r mod1$coefficients[1]` - `r -mod1$coefficients[2]` x +`r mod1$coefficients[3]` x^2
+$$
+
+##### Which is exactly the same as the textbook solution.
+
+##### Finally I plotted the data along with the model predictions to see how well the model fits the data:
+
+```{r ex1.3, echo=FALSE}
+#create sequence of x values
+xValues <- seq(-2, 5, 0.1)
+
+#create list of predicted y values using quadratic model
+yPredict <- predict(mod1,list(x=xValues, x2=xValues^2))
+
+#create scatterplot of original data values
+plot(x, y, pch=16)
+#add predicted lines based on quadratic regression model
+lines(xValues, yPredict, col='#2E5E80')
+```
+
+#### Plot the residuals to make sure there are no patterns
+
+```{r}
+plot(x, mod1$residuals, pch=16)
+```
+
+
+## Ex. 2
+
+### Implement the nonlinear curvefitting of Example 20 on Page 83 for the following data:
+
+```{r table2, echo=FALSE}
+x <- c(0.10, 0.50, 1.00, 1.50, 2.00, 2.50)
+y <- c(0.10, 0.28, 0.40, 0.40, 0.37, 0.32) 
+table2 <- t(data.frame(x,y))
+kable(format(table2, digits = 2, drop0trailing = FALSE))  %>%
+  kable_styling("hover", full_width = F) %>%
+  column_spec(1, border_right = T) %>%
+  row_spec(1:2, bold = T, color = "white", background = "#2E5E80")
+```
+
+##### Following the same procedure as in example 1 first plot the data.
+
+```{r ex2, echo=FALSE}
+plot(x, y, pch=16)
+```
+
+##### Then fit the data to the model $y = \frac{x}{a+bx^2}$ using the `nls()` function in the `stats` package.
+
+```{r ex2.2}
+f <- function(x, a, b) x/(a + b*x^2)
+mod2 <- nls(y ~ f(x, a, b), data = data.frame(x,y), 
+               start = list(a = 1, b = 1), trace = T)
+mod2
+
+s <- summary(mod2, correlation = TRUE)
+s$coefficients
+s$correlation
+```
+
+##### So the R code gives us the equation: 
+
+$$
+y = \frac{x}{`r s$coefficients[1]`+`r s$coefficients[2]`x^2}
+$$
+
+##### Which is exactly the same as the textbook solution.
+
+##### Plot the data along with the model predictions to see how well the model fits the data:
+
+```{r ex2.3, echo=FALSE}
+yPredict <- predict(mod2,list(x=xValues))
+
+plot(x, y, pch=16)
+lines(xValues, yPredict, col='#2E5E80')
+```
+
+#### Plot the residuals to make sure there are no patterns
+
+```{r}
+plot(x, s$residuals, pch=16)
+```
+
+
+## Ex. 3
+
+### For data with binary $y$ values, try to fit the following data to the nonlinear function $$y = \frac{1}{1+e^{a+bx}}$$ starting with $a=1$ and $b=1$.
+
+```{r table3, echo=FALSE}
+x <- c(0.1, 0.5, 1.0, 1.5, 2.0, 2.5)
+y <- c(0, 0, 1, 1, 1, 0) 
+table3 <- t(data.frame(x = format(x, digits = 1, drop0trailing = FALSE),
+                       y = format(y, digits = 0, drop0trailing = TRUE)))
+kable(format(table3, digits = 2, drop0trailing = TRUE)) %>%
+  kable_styling("hover", full_width = F) %>%
+  column_spec(1, border_right = T) %>%
+  row_spec(1:2, bold = T, color = "white", background = "#2E5E80")
+```
+
+##### Plot the data.
+
+```{r ex3, echo=FALSE}
+plot(x, y, pch=16)
+```
+
+#### Using the `nls()` function in the `stats` package as in exercise 2
+
+##### Fit the data to the model $y = \frac{1}{1+e^{a+bx}}$ using the `nls()` function in the `stats` package.
+
+```{r ex3.2}
+f3 <- function(x, a, b) 1/(1 + exp(1)^(a+b*x))
+mod3 <- nls(y ~ f3(x, a, b), data = data.frame(x,y), 
+               start = list(a = 1, b = 1), trace = T)
+mod3
+
+s <- summary(mod3, correlation = TRUE)
+s$coefficients
+s$correlation
+```
+
+##### Plot the data along with the model predictions to see how well the model fits the data:
+
+```{r ex3.3, echo=FALSE}
+yPredict <- predict(mod3,list(x=xValues))
+
+plot(x, y, pch=16)
+lines(xValues, yPredict, col='#2E5E80')
+```
+
+#### Using the glm() function for logistic regression
+
+```{r}
+mod3.2 <- glm(y~x, family = binomial(link = "logit"))
+mod3.2
+summary(mod3.2)
+```
+
+##### Plot the data along with the model predictions to see how well the model fits the data:
+
+```{r echo=FALSE}
+yPredict <- predict(mod3.2,list(x=xValues))
+yPredict <- ifelse(yPredict >= 0.5, 1, 0)
+
+plot(x, y, pch=16)
+lines(xValues, yPredict, col='#2E5E80')
+```
+
+##### Looks like the first solution using the `nls()` function and Gauss-Newton method resulted in better predictions.
