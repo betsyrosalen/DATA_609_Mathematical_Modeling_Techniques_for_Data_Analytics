@@ -1,0 +1,182 @@
+---
+title: "DATA 609 - HW 5"
+author: "Betsy Rosalen"
+date: "November 6, 2021"
+output:
+    html_document:
+        theme: cerulean
+        code_folding: show
+        df_print: paged
+        toc: true
+        toc_depth: 2
+        toc_float:
+            collapsed: false
+            smooth_scroll: false
+        css: ./style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+options(scipen=999, digits = 4)
+library(kableExtra)
+set.seed(42)
+```
+
+## Ex. 1
+
+### Carry out the logistic regression (Example 22 on Page 94 in the book, Introduction to Algorithms for Data Mining and Machine Learning, by Xin-She Yang), in R using the data. 
+
+```{r table1, echo=FALSE}
+x <- c(0.1, 0.5, 1.0, 1.5, 2.0, 2.5)
+y <- c(0, 0, 1, 1, 1, 0) 
+table1 <- t(data.frame(x = format(x, digits = 1, drop0trailing = FALSE),
+                       y = format(y, digits = 0, drop0trailing = TRUE)))
+kable(format(table1, digits = 2, drop0trailing = TRUE))  %>%
+  kable_styling("hover", full_width = F) %>%
+  column_spec(1, border_right = T) %>%
+  row_spec(1:2, bold = T, color = "white", background = "#2E5E80")
+```
+
+### The formula is $$y(x) = \frac{1}{1+exp[-(a+bx)]}$$
+
+##### First we use the `glm` function with `family = 'binomial'` to create our model.
+
+```{r ex1}
+log_reg <- glm(y ~ x, family = "binomial")
+summary(log_reg)
+```
+
+##### We get the same model as found in the book (rounded to 3 digits):
+
+$$P = \frac{1}{1+exp[-(-0.898+0.710x)]}$$
+
+##### Then we use the `predict` function to see probabilities of a positive outcome based on our fit model.
+
+```{r}
+log_reg.probs <- predict(log_reg,type = "response")
+log_reg.probs
+```
+
+##### Then we can use those probabilities to make predictions based on our model and then create a confusion matrix for our results.  
+
+```{r}
+log_reg.pred <- ifelse(log_reg.probs > 0.5, 1, 0)
+log_reg.pred
+table(log_reg.pred,y)
+```
+
+
+## Ex. 2
+
+### Using the motor car database (`mtcars`) of the built-in data sets in R, carry out a basic principal component analysis and explain your results.
+
+```{r ex2}
+mtcars_pca <- prcomp(mtcars, scale=TRUE)
+summary(mtcars_pca)
+```
+
+We can see above from the "Cumulative Proportion" numbers that just over 60% of the variance can be explained by the first principal component, 94.36% cumulative variance by PC5 and 100% by 11 principal components!
+
+However, from the plot below we can see that the majority of the variance can be explained by just the first 3 principal components.  Each of the following components explains less than 3% of the remaining variance.
+
+```{r}
+screeplot(mtcars_pca)
+```
+
+If we want to see details for what each component is comprised of we can call the `prcomp` function results without summarizing...
+
+```{r}
+mtcars_pca
+```
+
+
+## Ex. 3
+
+### Generate a random $4 \times 5$ matrix, and find its singular value decompostition using R.
+
+```{r ex3}
+# create and print random matrix
+A <- matrix(rnorm(20),nrow=4)
+A
+
+# perform singular value decomposition
+A_svd <- svd(A) 
+A_svd
+```
+
+We can check that the math works by multiplying $A=UDV^t$ and seeing if it equals our original random matrix.
+
+```{r}
+A == A_svd$u %*% diag(A_svd$d) %*% t(A_svd$v)
+```
+
+Probably just rounding errors so let's try this again...
+
+```{r}
+round(A,12) == round(A_svd$u %*% diag(A_svd$d) %*% t(A_svd$v), 12)
+```
+
+After running that a few times I found that its accurate to about 12 digits.  (I had to set a seed to make the results come out the same on rerunning the same code)  After about 12 digits the rounding errors cause some values to be FALSE (not match).
+
+## Ex. 4
+
+### First try to simulate 100 data points for $y$ using $$y=5x_1+2x_2+2x_3+x_4$$ where $x_1, x_2$ are uniformly distributed in [1,2] while $x_3, x_4$ are normally distributed with zero mean and unit variance.  Then use principal component analysis (PCA) to analyze the data to find its principal components.  Are the results expected from the formula?
+
+```{r ex4}
+x1 <- runif(100, 1, 2)
+x2 <- runif(100, 1, 2)
+x3 <- rnorm(100, 0, 1)
+x4 <- rnorm(100, 0, 1)
+par(mfrow=c(2,2))
+hist(x1)
+hist(x2)
+hist(x3)
+hist(x4)
+```
+
+```{r}
+df <- data.frame(5*x1,2*x2,2*x3,x4)
+df_pca <- prcomp(df, scale=TRUE)
+summary(df_pca)
+df_pca
+```
+
+```{r}
+screeplot(df_pca)
+```
+
+To be perfectly honest I am not sure how to tell what I should expect based on the formula.  Let's look at histograms of the scaled data to get an idea...
+
+```{r}
+x1_scaled <- scale(5*x1)
+x2_scaled <- scale(2*x2)
+x3_scaled <- scale(2*x3)
+x4_scaled <- scale(x4)
+par(mfrow=c(2,2))
+hist(x1_scaled)
+hist(x2_scaled)
+hist(x3_scaled)
+hist(x4_scaled)
+```
+
+After multiplying and scaling the 4 variables have the same variances, so I guess it makes sense that the PCA was not really able to reduce the number of dimensions necessary to explain the variance of our data set because they are all somewhat similar distributions after scaling.  So all 4 are really necessary to explain all the variance in the data set.  
+
+```{r, include=FALSE, results='hide', fig.keep='all', fig.height=8}
+cars <- data.frame(scale(mtcars))
+par(mfrow=c(4,3))
+lapply(cars, hist)
+```
+
+Just out of curiosity let's see what it looks like without scaling...
+
+```{r}
+df_pca2 <- prcomp(df, scale=FALSE)
+summary(df_pca2)
+df_pca2
+```
+
+```{r}
+screeplot(df_pca2)
+```
+
+So in this case maybe we would not want to scale our data?  96% of the variance can be explained with just three variables in that case...
