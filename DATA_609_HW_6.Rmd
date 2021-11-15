@@ -1,0 +1,194 @@
+---
+title: "DATA 609 - HW 6"
+author: "Betsy Rosalen"
+date: "November 13, 2021"
+output:
+    html_document:
+        theme: cerulean
+        code_folding: show
+        df_print: paged
+        toc: true
+        toc_depth: 2
+        toc_float:
+            collapsed: false
+            smooth_scroll: true
+        css: ./style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+options(scipen=999, digits = 4)
+library(tidyverse)
+library(kableExtra)
+library(caret)
+set.seed(42)
+```
+
+## Ex. 1
+
+### Use a data set such as `PlantGrowth` in R to calculate three different distance metrics and discuss the results.
+
+Without thinking much about it I calculated the distance using both variables, independent and dependent, (you can see the results below), but then the numbers didn't really make sense.  For the Manhattan distance it is just doubling the difference in the independent variable, `weight`, from one point to another.  For the euclidean distance it's summing the square of the difference in `weight` with the square of the same difference in `weight` and then taking the square root, and the same for minkowski with p=3 except it's the difference cubed plus the same difference cubed and then the cube root. This really makes no sense.  So then I removed the categorical dependent variable and recalculated.  All three distance measures are exactly the same and equal to the difference in `weight` in this case, which I think is as it should be...
+
+#### Distance calculated using both the independent and dependent variables
+
+```{r ex1}
+p <- PlantGrowth
+p
+
+p_manhattan <- as.data.frame(as.matrix(dist(p, method = "manhattan")))
+rownames(p_manhattan) <- paste0("   ", as.character(c(1:30)))
+kbl(p_manhattan) %>%
+  kable_minimal(font_size = 10) 
+
+p_euclidean <- as.matrix(dist(p, method = "euclidean"))
+rownames(p_euclidean) <- paste0("   ", as.character(c(1:30)))
+kbl(p_euclidean) %>%
+  kable_minimal(font_size = 10) 
+
+p_minkowski_p3 <- as.matrix(dist(p, method = "minkowski", p=3))
+rownames(p_minkowski_p3) <- paste0("   ", as.character(c(1:30)))
+kbl(p_minkowski_p3) %>%
+  kable_minimal(font_size = 10) 
+
+kbl(data.frame(rowSums(p_manhattan), rowSums(p_euclidean), rowSums(p_minkowski_p3))) %>%
+  kable_minimal(full_width = F)
+```
+
+#### Distance calculated using only the independent variable
+
+```{r ex1.2}
+p1 <- p[,1]
+
+p1_manhattan <- as.data.frame(as.matrix(dist(p1, method = "manhattan")))
+rownames(p1_manhattan) <- paste0("   ", as.character(c(1:30)))
+kbl(p1_manhattan) %>%
+  kable_minimal(font_size = 10) 
+
+p1_euclidean <- as.matrix(dist(p1, method = "euclidean"))
+rownames(p1_euclidean) <- paste0("   ", as.character(c(1:30)))
+kbl(p1_euclidean) %>%
+  kable_minimal(font_size = 10) 
+
+p1_minkowski_p3 <- as.matrix(dist(p1, method = "minkowski", p=3))
+rownames(p1_minkowski_p3) <- paste0("   ", as.character(c(1:30)))
+kbl(p1_minkowski_p3) %>%
+  kable_minimal(font_size = 10) 
+
+kbl(data.frame(rowSums(p1_manhattan), rowSums(p1_euclidean), rowSums(p1_minkowski_p3))) %>%
+  kable_minimal(full_width = F)
+```
+  
+## Ex. 2
+
+### Now use a higher-dimensional data set `mtcars` to carry out the same three distance metrics in the previous question and discuss the results.  
+
+```{r ex2}
+cars <- mtcars
+cars
+
+c_manhattan <- as.data.frame(as.matrix(dist(cars, method = "manhattan")))
+kbl(c_manhattan) %>%
+  kable_paper(bootstrap_options = "striped", full_width = F, font_size = 11)
+
+c_euclidean <- as.matrix(dist(cars, method = "euclidean"))
+kbl(c_euclidean) %>%
+  kable_paper(bootstrap_options = "striped", full_width = F, font_size = 11)
+
+c_minkowski_p3 <- as.matrix(dist(cars, method = "minkowski", p=3))
+kbl(c_minkowski_p3) %>%
+  kable_paper(bootstrap_options = "striped", full_width = F, font_size = 11)
+
+kbl(data.frame(rowSums(c_manhattan), rowSums(c_euclidean), rowSums(c_minkowski_p3))) %>%
+  kable_minimal(full_width = F)
+```
+
+The results above make mathematical sense if you treat all of the variables as numeric, however, I am not sure if `vs` and `am` should be treated as numeric since they are actually categorical?  But for example let's just look at the Mazda RX4 and the Hornet 4 Drive...
+
+```{r}
+Maz_Horn <- cars[c(1,4),]
+Maz_Horn
+```
+If we take absolute value of the difference between each variable and just add them up we get the Manhattan distance...
+
+```{r}
+Mazda <- Maz_Horn[1,]
+Hornet <- Maz_Horn[2,]
+differences <- Mazda-Hornet
+rownames(differences) <- 'differences'
+
+differences
+sum(abs(Mazda-Hornet))
+```
+
+If we take the difference between each variable square each one then add them up and finally take the square root we get the euclidean distance...
+
+```{r}
+differences_sq <- (Mazda-Hornet)^2
+rownames(differences_sq) <- 'differences_squared'
+differences_sq
+sum(differences_sq)
+sqrt(sum(differences_sq))
+```
+
+And finally the minkowski distance is the difference between each variable cubed then summed up and then take the cube root...
+
+```{r}
+differences_cubed <- (Mazda-Hornet)^3
+rownames(differences_cubed) <- 'differences_cubed'
+differences_cubed
+sum(abs(differences_cubed))
+sum(abs(differences_cubed))^(1/3)
+```
+
+In each case above the numeric codes for the categorical variables, `vs` and `am`, are included in the calculations that match the output of the `dist` function.  
+
+## Ex. 3
+
+### Use the built in data set `mtcars` to carry out hierarchy clustering using two different distance metrics and compare if they get the same results.  Discuss the results.  
+
+```{r ex3}
+manhattan_clusters <- hclust(dist(cars, method = "manhattan"))
+plot(manhattan_clusters)
+
+euclidean_clusters <- hclust(dist(cars, method = "euclidean"))
+plot(euclidean_clusters)
+
+minkowski_clusters <- hclust(dist(cars, method = "minkowski", p=3))
+plot(minkowski_clusters)
+```
+
+All 3 distance measures give similar but not exactly the same results.  The euclidean and minkowski models are more similar than either of those are to the manhattan model however.  This makes sense since the calculations and numeric values for the euclidean and minkowski distances are very similar as well.
+
+## Ex. 4
+
+### Load the well-known Fisher's `iris` flower data set that consists of 150 samples for three species (50 samples each species).  The four measures or features are the lengths and widths of sepals and petals.  Use kNN clustering to analyze this `iris` data set by selecting 120 samples for training and 30 samples for testing.
+
+```{r ex4}
+set.seed(42)
+index <- createDataPartition(iris$Species, p = 0.80, list = FALSE)
+train <- iris[index, ]
+test <- iris[-index, ]
+
+knn_iris <- train(Species ~ ., data = train, 
+                 method = "knn")
+knn_iris
+
+pred_iris <- predict(knn_iris, newdata = test)
+confusionMatrix(pred_iris, test$Species)
+```
+
+
+## Ex. 5
+
+### Use the `iris` data set to carry out k-means clustering.  Compare the results to the actual classes and estimate the clustering accuracy.
+
+```{r ex5}
+set.seed(42)
+kmeans_iris <- kmeans(iris[,c(1:4)], centers = 3, nstart = 25)
+kmeans_iris
+conf_mat <- table(kmeans_iris$cluster, iris$Species)
+conf_mat
+accuracy <- sum(diag(conf_mat))/sum(conf_mat)
+accuracy
+```
