@@ -12,7 +12,7 @@ output:
         toc_float:
             collapsed: false
             smooth_scroll: true
-        css: ./style.css
+        css: ./style_2.css
 ---
 
 ```{r setup, include=FALSE}

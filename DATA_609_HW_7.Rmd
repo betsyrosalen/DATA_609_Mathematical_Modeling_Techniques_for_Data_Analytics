@@ -49,6 +49,7 @@ table(p_pred)
 confusionMatrix(p_pred, p$group)
 ```
 
+##### The SVM model has 29 support vectors for 30 samples in our data set, resulting in an accuracy of only about 50%, just barely better than guessing.  This means that our data is not easily separable and that we have a very complex model that uses all but one of the data points to determine the position and orientation of the hyperplane.  
   
 ## Ex. 2
 
@@ -74,6 +75,7 @@ table(i_pred)
 confusionMatrix(i_pred, i$Species)
 ```
 
+##### The `iris` data set produced a SVM model with 51 support vectors for 150 samples.  This means about 1 third of the samples are used as support vectors indicating that our model might be overfitting with an accuracy of over 97%.
 
 ## Ex. 3
 
@@ -92,13 +94,19 @@ summary(svm_iris)
 ```
 
 ```{r ex3.3}
-pred_iris <- predict(svm_iris, newdata = test)
-table(pred_iris)
+pred_iris_train <- predict(svm_iris, newdata = train)
+table(pred_iris_train)
+confusionMatrix(pred_iris_train, train$Species)
 ```
 
 ```{r ex3.4}
-confusionMatrix(pred_iris, test$Species)
+pred_iris_test <- predict(svm_iris, newdata = test)
+table(pred_iris_test)
 ```
 
+```{r ex3.5}
+confusionMatrix(pred_iris_test, test$Species)
+```
 
+##### Once again the model trained on just 80% of the `iris` data used 44 data points as support vectors, a bit over 1 third of the 120 samples.  The accuracy on the training data is over 98%, however it drops to under 87% on the test data indicating that it may be overfit.
 
