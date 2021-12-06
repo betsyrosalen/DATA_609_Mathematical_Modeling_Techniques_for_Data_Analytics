@@ -1,0 +1,104 @@
+---
+title: "DATA 609 - HW 7"
+author: "Betsy Rosalen"
+date: "December 5, 2021"
+output:
+    html_document:
+        theme: cerulean
+        code_folding: show
+        df_print: paged
+        toc: true
+        toc_depth: 2
+        toc_float:
+            collapsed: false
+            smooth_scroll: true
+        css: ./style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE)
+options(scipen=999, digits = 4)
+library(tidyverse)
+library(kableExtra)
+library(caret)
+library(e1071)
+set.seed(42)
+```
+
+## Ex. 1
+
+### Use the `svm()` algorithm of the `e1071` package to carry out the support vector machine for the `PlantGrowth` data set.  Then discuss the number of support vectors/samples.  [Install the `e1071` package in R if needed.]
+
+
+```{r ex1}
+p <- PlantGrowth
+cbind(p[1:10,],p[11:20,],p[21:30,])
+```
+
+```{r ex1.2}
+p_svm <- svm(group ~ weight, data = p)
+summary(p_svm)
+```
+
+```{r ex1.3}
+p_pred <- predict(p_svm, newdata = p)
+table(p_pred)
+```
+
+```{r ex1.4}
+confusionMatrix(p_pred, p$group)
+```
+
+  
+## Ex. 2
+
+### Do a similar SVM analysis as that in the previous question using the `iris` data set.  Discuss the number of support vectrs/samples.  
+
+
+```{r ex2}
+i <- iris
+i
+```
+
+```{r ex2.2}
+i_svm <- svm(Species ~ ., data = i)
+summary(i_svm)
+```
+
+```{r ex2.3}
+i_pred <- predict(i_svm, newdata = i)
+table(i_pred)
+```
+
+```{r ex2.4}
+confusionMatrix(i_pred, i$Species)
+```
+
+
+## Ex. 3
+
+### Use the `iris` data set (or any other data set) to select 80% of the samples for training `svm()`, then use the rest 20% for validation.  Discuss your results.  
+
+```{r ex3}
+set.seed(42)
+index <- createDataPartition(iris$Species, p = 0.80, list = FALSE)
+train <- iris[index, ]
+test <- iris[-index, ]
+```
+
+```{r ex3.2}
+svm_iris <- svm(Species ~ ., data = train)
+summary(svm_iris)
+```
+
+```{r ex3.3}
+pred_iris <- predict(svm_iris, newdata = test)
+table(pred_iris)
+```
+
+```{r ex3.4}
+confusionMatrix(pred_iris, test$Species)
+```
+
+
+
