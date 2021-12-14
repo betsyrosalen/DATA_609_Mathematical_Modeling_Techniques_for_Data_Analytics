@@ -1,0 +1,420 @@
+---
+title: "DATA 609 - HW 8"
+author: "Betsy Rosalen"
+date: "December 12, 2021"
+output:
+    html_document:
+        theme: cerulean
+        code_folding: show
+        df_print: paged
+        toc: true
+        toc_depth: 2
+        toc_float:
+            collapsed: false
+            smooth_scroll: true
+        css: ./style.css
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+options(scipen = 999, digits = 4)
+library(tidyverse)
+library(kableExtra)
+library(caret)
+library(nnet)
+#install.packages("keras")
+library(keras)
+#install_keras()
+#library(tensorflow)
+```
+
+## Ex. 1
+
+### Use the `nnet()` package to analyze the `iris` data set.  Use 80% of the 150 samples as the training data and the rest for validation.  Discuss the results.
+
+```{r ex1}
+i <- iris
+i
+```
+
+```{r ex1.2}
+samp <- c(sample(1:50,40), sample(51:100,40), sample(101:150,40))
+train <- i[samp,]
+test <- i[-samp,]
+
+iris_nnet <- nnet(Species~., train, size = 2, rang = 0.1,
+            decay = 5e-4, maxit = 200)
+```
+
+```{r ex1.3}
+i_pred <- as.factor(predict(iris_nnet, test, 'class'))
+confusionMatrix(i_pred, test$Species)
+```
+
+##### I used the help documentation in R to understand how to use `nnet` and they had used the `iris` data set as their example, so I chose to use the same hyperparameters as in their example.  I wish I knew _why_ they chose those hyperparaeter values rather than the defaults though.  Let's run it again using the defaults to see what happens...
+
+```{r ex1.4}
+set.seed(42)
+iris_nnet2 <- nnet(Species~., train, size = 1)
+```
+
+```{r ex1.5}
+i_pred2 <- as.factor(predict(iris_nnet2, test, 'class'))
+confusionMatrix(i_pred2, test$Species)
+```
+
+##### I got really inconsistent results using the defaults and size=1 (above).  So I set a seed to show the problem.  You can see above using 42 as my seed one third of the test set are misclassified.  However if I use seed 250 (below) then I get almost the same performance as in the first model above which gave consistently good results no matter how many times I ran it.  So clearly the customized hyperparameters result in a much better and more consistent model.  
+
+```{r ex1.6}
+set.seed(250)
+iris_nnet2 <- nnet(Species~., train, size = 1)
+```
+
+```{r ex1.7}
+i_pred2 <- as.factor(predict(iris_nnet2, test, 'class'))
+confusionMatrix(i_pred2, test$Species)
+```
+
+## Ex. 2
+
+### As a mini project, install the `keras` package and learn how to use it.  Then, carry out various tasks that may be useful to your project and studies.  
+
+##### I used the cran documentation to learn about using the keras package.  Most of the code is modified from this page:  <https://cran.r-project.org/web/packages/keras/vignettes/index.html>  
+
+#### Downloading and preparing the data
+
+##### I decided to use the alternative fashion dataset though instead of MNIST.  The following code loads the dataset:
+
+```{r ex2}
+fashion <- dataset_fashion_mnist()
+```
+
+#### First 4 images
+
+```{r echo=FALSE}
+pic1 <- fashion$train$x[1, 1:28, 1:28]
+pic2 <- fashion$train$x[2, 1:28, 1:28]
+pic3 <- fashion$train$x[3, 1:28, 1:28]
+pic4 <- fashion$train$x[4, 1:28, 1:28]
+
+par(mfrow=c(2,2))
+par(pty="s", xaxt="n", yaxt="n")
+image(pic1, col=gray.colors(256))
+image(pic2, col=gray.colors(256))
+image(pic3, col=gray.colors(256))
+image(pic4, col=gray.colors(256))
+```
+
+##### Here's a description of the dataset from the `keras` package documentation found here: <https://cran.r-project.org/web/packages/keras/keras.pdf>
+
+##### **Details**
+
+Dataset of 60,000 28x28 grayscale images of 10 fashion categories, along with a test set of 10,000
+images. This dataset can be used as a drop-in replacement for MNIST. The class labels are:
+
+- 0 - T-shirt/top
+- 1 - Trouser
+- 2 - Pullover
+- 3 - Dress
+- 4 - Coat
+- 5 - Sandal
+- 6 - Shirt
+- 7 - Sneaker
+- 8 - Bag
+- 9 - Ankle boot
+
+##### **Value**
+
+Lists of training and test data: train$x, train$y, test$x, test$y, where x is an array of grayscale image
+data with shape (num_samples, 28, 28) and y is an array of article labels (integers in range 0-9) with
+shape (num_samples).
+
+##### The data is already split into training and testing sets but the x values need to be reshaped from 3-d arrays to 1-d vectors and scaled so that the values range from 0 to 1 instead of 0 to 255 (grayscale values) and the y values need to be one-hot encoded into binary class matrices using the Keras `to_categorical()` function.
+
+```{r}
+x_train <- fashion$train$x
+y_train <- fashion$train$y
+x_test <- fashion$test$x
+y_test <- fashion$test$y
+```
+
+```{r}
+# reshape
+x_train <- array_reshape(x_train, c(nrow(x_train), 784))
+x_test <- array_reshape(x_test, c(nrow(x_test), 784))
+# rescale
+x_train <- x_train / 255
+x_test <- x_test / 255
+
+y_train <- to_categorical(y_train, 10)
+y_test <- to_categorical(y_test, 10)
+```
+
+#### Defining and training the model
+
+##### Now that the data is ready, we can define a model.  For the first model I just used the parameters exactly as I found them in the keras documentation example.  Then I iterated through a range of changes to the hyperparameters and the number of layers to see if I could impove upon the model.  The code is shown for the first model but just the plots for the subsequent models.
+
+#### Model 1 - 2 layers 256/128 units each, batch size 128, 30 epochs
+
+```{r}
+model <- keras_model_sequential() 
+model %>% 
+  layer_dense(units = 256, activation = 'relu', input_shape = c(784)) %>% 
+  layer_dropout(rate = 0.4) %>% 
+  layer_dense(units = 128, activation = 'relu') %>%
+  layer_dropout(rate = 0.3) %>%
+  # outputs a length 10 numeric vector (probabilities for each class) using a softmax activation function.
+  layer_dense(units = 10, activation = 'softmax')
+```
+
+```{r}
+summary(model)
+```
+
+```{r}
+model %>% compile(
+  loss = 'categorical_crossentropy',
+  optimizer = optimizer_rmsprop(),
+  metrics = c('accuracy')
+)
+```
+
+```{r}
+set.seed(42)
+history <- model %>% fit(
+  x_train, y_train, 
+  epochs = 30, batch_size = 128, 
+  validation_split = 0.2
+)
+
+plot(history)
+```
+
+```{r}
+model %>% evaluate(x_test, y_test)
+```
+
+#### Model 2 - 2 layers 256/128 units each, batch size 256, 30 epochs
+
+```{r echo=FALSE}
+model2 <- keras_model_sequential() 
+model2 %>% 
+  layer_dense(units = 256, activation = 'relu', input_shape = c(784)) %>% 
+  layer_dropout(rate = 0.4) %>% 
+  layer_dense(units = 128, activation = 'relu') %>%
+  layer_dropout(rate = 0.3) %>%
+  # outputs a length 10 numeric vector (probabilities for each class) using a softmax activation function.
+  layer_dense(units = 10, activation = 'softmax') %>% 
+  compile(loss = 'categorical_crossentropy',
+          optimizer = optimizer_rmsprop(),
+          metrics = c('accuracy')
+)
+
+set.seed(42)
+history2 <- model2 %>% fit(
+  x_train, y_train, 
+  epochs = 30, batch_size = 256, 
+  validation_split = 0.2
+)
+
+plot(history2)
+```
+
+```{r echo=FALSE}
+model2 %>% evaluate(x_test, y_test)
+```
+
+#### Model 3 - 2 layers 256/128 units each, batch size 64, 30 epochs
+
+```{r echo=FALSE}
+model3 <- keras_model_sequential() 
+model3 %>% 
+  layer_dense(units = 256, activation = 'relu', input_shape = c(784)) %>% 
+  layer_dropout(rate = 0.4) %>% 
+  layer_dense(units = 128, activation = 'relu') %>%
+  layer_dropout(rate = 0.3) %>%
+  # outputs a length 10 numeric vector (probabilities for each class) using a softmax activation function.
+  layer_dense(units = 10, activation = 'softmax') %>% 
+  compile(loss = 'categorical_crossentropy',
+          optimizer = optimizer_rmsprop(),
+          metrics = c('accuracy')
+)
+
+set.seed(42)
+history3 <- model3 %>% fit(
+  x_train, y_train, 
+  epochs = 30, batch_size = 64, 
+  validation_split = 0.2
+)
+
+plot(history3)
+```
+
+```{r echo=FALSE}
+model3 %>% evaluate(x_test, y_test)
+```
+
+#### Model 4 - 2 layers 128/64 units each, batch size 128, 30 epochs
+
+```{r echo=FALSE}
+model4 <- keras_model_sequential() 
+model4 %>% 
+  layer_dense(units = 128, activation = 'relu', input_shape = c(784)) %>% 
+  layer_dropout(rate = 0.4) %>% 
+  layer_dense(units = 64, activation = 'relu') %>%
+  layer_dropout(rate = 0.3) %>%
+  # outputs a length 10 numeric vector (probabilities for each class) using a softmax activation function.
+  layer_dense(units = 10, activation = 'softmax') %>% 
+  compile(loss = 'categorical_crossentropy',
+          optimizer = optimizer_rmsprop(),
+          metrics = c('accuracy')
+)
+
+set.seed(42)
+history4 <- model4 %>% fit(
+  x_train, y_train, 
+  epochs = 30, batch_size = 128, 
+  validation_split = 0.2
+)
+
+plot(history4)
+```
+
+```{r echo=FALSE}
+model4 %>% evaluate(x_test, y_test)
+```
+
+#### Model 5 - 2 layers 128/64 units each, batch size 256, 30 epochs
+
+```{r echo=FALSE}
+model5 <- keras_model_sequential() 
+model5 %>% 
+  layer_dense(units = 128, activation = 'relu', input_shape = c(784)) %>% 
+  layer_dropout(rate = 0.4) %>% 
+  layer_dense(units = 64, activation = 'relu') %>%
+  layer_dropout(rate = 0.3) %>%
+  # outputs a length 10 numeric vector (probabilities for each class) using a softmax activation function.
+  layer_dense(units = 10, activation = 'softmax') %>% 
+  compile(loss = 'categorical_crossentropy',
+          optimizer = optimizer_rmsprop(),
+          metrics = c('accuracy')
+)
+
+set.seed(42)
+history5 <- model5 %>% fit(
+  x_train, y_train, 
+  epochs = 30, batch_size = 256, 
+  validation_split = 0.2
+)
+
+plot(history5)
+```
+
+```{r echo=FALSE}
+model5 %>% evaluate(x_test, y_test)
+```
+
+#### Model 6 - 2 layers 64/32 units each, batch size 256, 30 epochs
+
+```{r echo=FALSE}
+model6 <- keras_model_sequential() 
+model6 %>% 
+  layer_dense(units = 64, activation = 'relu', input_shape = c(784)) %>% 
+  layer_dropout(rate = 0.4) %>% 
+  layer_dense(units = 32, activation = 'relu') %>%
+  layer_dropout(rate = 0.3) %>%
+  # outputs a length 10 numeric vector (probabilities for each class) using a softmax activation function.
+  layer_dense(units = 10, activation = 'softmax') %>% 
+  compile(loss = 'categorical_crossentropy',
+          optimizer = optimizer_rmsprop(),
+          metrics = c('accuracy')
+)
+
+set.seed(42)
+history6 <- model6 %>% fit(
+  x_train, y_train, 
+  epochs = 30, batch_size = 256, 
+  validation_split = 0.2
+)
+
+plot(history6)
+```
+
+```{r echo=FALSE}
+model6 %>% evaluate(x_test, y_test)
+```
+
+#### Model 7 - 3 layers 128/64/32 units each, batch size 256, 30 epochs
+
+```{r echo=FALSE}
+model7 <- keras_model_sequential() 
+model7 %>% 
+  layer_dense(units = 128, activation = 'relu', input_shape = c(784)) %>% 
+  layer_dropout(rate = 0.4) %>% 
+  layer_dense(units = 64, activation = 'relu') %>%
+  layer_dropout(rate = 0.3) %>% 
+  layer_dense(units = 32, activation = 'relu') %>%
+  layer_dropout(rate = 0.2) %>%
+  # outputs a length 10 numeric vector (probabilities for each class) using a softmax activation function.
+  layer_dense(units = 10, activation = 'softmax') %>% 
+  compile(loss = 'categorical_crossentropy',
+          optimizer = optimizer_rmsprop(),
+          metrics = c('accuracy')
+)
+
+set.seed(42)
+history7 <- model7 %>% fit(
+  x_train, y_train, 
+  epochs = 30, batch_size = 256, 
+  validation_split = 0.2
+)
+
+plot(history7)
+```
+
+```{r echo=FALSE}
+model7 %>% evaluate(x_test, y_test)
+```
+
+#### Model 8 - 3 layers 256/128/64 units each, batch size 512, 30 epochs
+
+```{r echo=FALSE}
+model8 <- keras_model_sequential() 
+model8 %>% 
+  layer_dense(units = 256, activation = 'relu', input_shape = c(784)) %>% 
+  layer_dropout(rate = 0.4) %>% 
+  layer_dense(units = 128, activation = 'relu') %>%
+  layer_dropout(rate = 0.3) %>% 
+  layer_dense(units = 64, activation = 'relu') %>%
+  layer_dropout(rate = 0.2) %>%
+  # outputs a length 10 numeric vector (probabilities for each class) using a softmax activation function.
+  layer_dense(units = 10, activation = 'softmax') %>% 
+  compile(loss = 'categorical_crossentropy',
+          optimizer = optimizer_rmsprop(),
+          metrics = c('accuracy')
+)
+
+set.seed(42)
+history8 <- model8 %>% fit(
+  x_train, y_train, 
+  epochs = 30, batch_size = 512, 
+  validation_split = 0.2
+)
+
+plot(history8)
+```
+
+```{r echo=FALSE}
+model8 %>% evaluate(x_test, y_test)
+```
+
+#### Evaluation
+
+##### All of the models performed about the same with only about 1% or less difference in accuracy between them.  You can see in the confusion matrix below, model 7, the most stable looking model, is particularly bad at classifying class 6 with only a little better than half classified correctly.  Class 6 is labeled 'Shirt' and was most often misclassified as 0, 'T-shirt/top', which is a pertty minor distinction so it's not surprisig that the model had trouble with differentiating the two classes.  Class 2 was next with a little over 75% classified correctly and all the rest at over 80%.  
+
+```{r}
+pred <- model7 %>% predict(x_test) %>% k_argmax() %>% as.numeric() %>% as.factor()
+y_transformed <- (as.numeric(sub('.', '', names(as.data.frame(y_test))[max.col(y_test)]))-1) %>% as.factor() 
+confusionMatrix(pred, y_transformed) 
+```
+
